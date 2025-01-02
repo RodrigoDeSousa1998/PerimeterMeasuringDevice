@@ -1,11 +1,16 @@
+import os
+
+# Set the revision to the new-style revision code for the board (800013 for revision 000F) to work with rpi-lgpio module
+os.environ['RPI_LGPIO_REVISION'] = '800013'
+
 import time
 import smbus2
 import RPi.GPIO as GPIO
 
 from LSM6DS3 import LSM6DS3
 
-# # Define I2C bus
-# bus = smbus2.SMBus(1)
+# Define I2C bus
+bus = smbus2.SMBus(1)
 
 # # Pin definitions
 # pinSDA = 3 # P1 header pin 3
@@ -22,18 +27,20 @@ GPIO.setmode(GPIO.BOARD)
 # Set GPIO pins to I/O and activate internal pull-up resistances
 GPIO.setup(pushButton, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
-
+def button_pressed_callback(channel):
+    print("Button pressed!")
 
 if __name__ == "__main__":
     
     print("Initializing LSM6DS3...")
-    lsm6ds3 = LSM6DS3()
+    lsm6ds3 = LSM6DS3(bus)
 
     acc_scaling_factor = 0.000061 # Sensitivity/Resolution for +-2g scale
     dps_scaling_factor = 0.0035  # Sensitivity/Resolution for +-1000dps scale
 
-    pressed = False
+    # pressed = False
 
+    GPIO.add_event_detect(pushButton, GPIO.RISING, callback=button_pressed_callback, bouncetime=150)
 
     try:
 
@@ -51,15 +58,12 @@ if __name__ == "__main__":
             print("\033[2A", end="")  # Move cursor up 2 lines
 
 
-            # button is pressed when pin is LOW
-            if GPIO.input(pushButton):
-                if pressed:
-                    print("Button pressed!")
-                    pressed = True
-            # button not pressed (or released)
-            else:
-                pressed = False
-
+            #  Button press detection
+            # if GPIO.input(pushButton) and not pressed:
+            #     print("Button pressed!")
+            #     pressed = True
+            # elif not GPIO.input(pushButton) and pressed:
+            #     pressed = False
             
             time.sleep(0.1) #IMU Output rate at 12.5 hz or 0.08s
 
@@ -68,3 +72,5 @@ if __name__ == "__main__":
         print(e)
     except KeyboardInterrupt:
         print("Terminating program.")
+    finally:
+        GPIO.cleanup()  # Ensure GPIO resources are released

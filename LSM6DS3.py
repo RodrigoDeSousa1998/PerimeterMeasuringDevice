@@ -1,9 +1,6 @@
 import sys
 import time
 
-import RPi.GPIO as GPIO
-import smbus2 as smbus
-
 # Sensor I2C Address
 LSM6DS3_ADDR = 0x6a
 
@@ -26,14 +23,6 @@ GYRO_HIGH_Z = 0x27
 CTRL1_XL = 0x10  # Accelerometer configuration
 CTRL2_G = 0x11  # Gyroscope configuration
 
-# use the bus that matches your raspi version
-rev = GPIO.RPI_REVISION
-if rev == 2 or rev == 3:
-    bus = smbus.SMBus(1)
-else:
-    bus = smbus.SMBus(0)
-
-
 def decimal_to_binary(int_value):
     return "{0:08b}".format(int_value)
 
@@ -46,19 +35,22 @@ def two_complement_two_bytes(val_str):
 
 class LSM6DS3:
     # Write ´data´ to a ´reg´ on the I2C device
-    @staticmethod
-    def __write_reg(data, reg):
-        bus.write_byte_data(LSM6DS3_ADDR, reg, data)
+    #@staticmethod
+    def __write_reg(self, data, reg):
+        self.bus.write_byte_data(LSM6DS3_ADDR, reg, data)
         time.sleep(0.01)
 
     # Read from the ´reg´ register
-    @staticmethod
-    def __read_reg(reg):
-        value = bus.read_byte_data(LSM6DS3_ADDR, reg)
+    #@staticmethod
+    def __read_reg(self, reg):
+        value = self.bus.read_byte_data(LSM6DS3_ADDR, reg)
         time.sleep(0.01)
         return value
 
-    def __init__(self):
+    def __init__(self, bus):
+        
+        self.bus = bus
+        
         data_to_write = 0
         data_to_write |= 0b00010000  # ODR_XL Low power mode
         data_to_write |= 0b00000000  # FX_XL Full-scale selection in +-2g
