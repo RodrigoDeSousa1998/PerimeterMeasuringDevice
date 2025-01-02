@@ -10,13 +10,17 @@ from LSM6DS3 import LSM6DS3
 # # Pin definitions
 # pinSDA = 3 # P1 header pin 3
 # pinSCL = 5 # P1 header pin 5
+pushButton = 11 # P1 header pin 11
 
-# # Set pin-numbering scheme to P1 Board Header 
-# GPIO.setmode(GPIO.BOARD)
+# Set pin-numbering scheme to P1 Board Header 
+GPIO.setmode(GPIO.BOARD)
 
 # # Set GPIO pins to I2C and activate internal pull-up resistances
 # GPIO.setup(pinSDA , GPIO.I2C, pull_up_down=GPIO.PUD_UP)
 # GPIO.setup(pinSCL , GPIO.I2C, pull_up_down=GPIO.PUD_UP)
+
+# Set GPIO pins to I/O and activate internal pull-up resistances
+GPIO.setup(pushButton, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 
 
@@ -27,6 +31,8 @@ if __name__ == "__main__":
 
     acc_scaling_factor = 0.000061 # Sensitivity/Resolution for +-2g scale
     dps_scaling_factor = 0.0035  # Sensitivity/Resolution for +-1000dps scale
+
+    pressed = False
 
 
     try:
@@ -43,6 +49,17 @@ if __name__ == "__main__":
             print(f"Accel (g): X={acc_x:.3f}, Y={acc_y:.3f}, Z={acc_z:.3f}")
             print(f"Ang Rate (dps): X={dps_x:.3f}, Y={dps_y:.3f}, Z={dps_z:.3f}")
             print("\033[2A", end="")  # Move cursor up 2 lines
+
+
+            # button is pressed when pin is LOW
+            if GPIO.input(pushButton):
+                if pressed:
+                    print("Button pressed!")
+                    pressed = True
+            # button not pressed (or released)
+            else:
+                pressed = False
+
             
             time.sleep(0.1) #IMU Output rate at 12.5 hz or 0.08s
 
