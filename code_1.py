@@ -31,13 +31,40 @@ GPIO.setmode(GPIO.BOARD)
 # Set GPIO pins to I/O and activate internal pull-up resistances
 GPIO.setup(pushButton, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
-def button_pressed_callback(channel):
-    global current_state
-    current_state = state(current_state.value + 1)
-    print("Button pressed!")
-    if current_state == state.CREDITS:
-        current_state = state.MAIN_MENU
+# def button_pressed_callback(channel):
+    # global current_state
+    # current_state = state(current_state.value + 1)
+    # print("Button pressed!")
+    # if current_state == state.CREDITS:
+    #     current_state = state.MAIN_MENU
 
+# Callback function for button press/release
+def button_press_callback(channel):
+    global button_press_start_time, last_button_press_time, button_pressed
+
+    if GPIO.input(channel) == GPIO.HIGH:  # Button pressed (rising edge)
+        if not button_pressed:  # Ensure we don't detect the same press multiple times
+            button_pressed = True
+            button_press_start_time = time.time()  # Record the start time of the press
+            print("Button pressed!")
+            return
+    
+    if GPIO.input(channel) == GPIO.LOW:  # Button released (falling edge)
+        if button_pressed:  # Only handle release if the button was previously pressed
+            press_duration = time.time() - button_press_start_time  # Calculate how long the button was pressed
+            if press_duration < SHORT_PRESS_THRESHOLD:
+                print("Short press detected!")
+                # Handle short press (e.g., start measurement)
+                global current_state
+                current_state = state(current_state.value + 1)
+                if current_state == state.CREDITS:
+                    current_state = state.MAIN_MENU
+            else:
+                print("Long press detected!")
+                # Handle long press (e.g., show settings menu)
+
+            button_pressed = False  # Reset the press state
+            return     
 
 def calculate_perimeter(accelerations, sampling_interval):
     start_time = time.time()  # Start the timer
@@ -57,8 +84,15 @@ class state(Enum):
     SETTINGS_MENU = 3
     CREDITS = 4
 
+# Short and Long Press Thresholds Definition
+SHORT_PRESS_THRESHOLD = 1.0  # seconds (short press duration)
+
 # Global Variables Definition
 current_state = state.MAIN_MENU
+button_press_start_time = None    # Variable to track press time
+last_button_press_time = 0  # Track the time of the last valid press
+button_pressed = False # Flag to prevent multiple detections
+
 
 #!############################## --- EXECUTIVE CYCLE --- ###############################
 
@@ -71,14 +105,11 @@ if __name__ == "__main__":
     acc_scaling_factor = 0.000061 # Sensitivity/Resolution for +-2g scale
     dps_scaling_factor = 0.0035  # Sensitivity/Resolution for +-1000dps scale
 
-    GPIO.add_event_detect(pushButton, GPIO.RISING, callback=button_pressed_callback, bouncetime=150)
+    GPIO.add_event_detect(pushButton, GPIO.BOTH, callback=button_press_callback, bouncetime=150)
 
     try:
-
         while True:
-
             match current_state:
-
                 case state.MAIN_MENU:
                     print("Press to start measurement...")
 
@@ -101,6 +132,7 @@ if __name__ == "__main__":
                     time.sleep(0.1) #Because IMU Output rate at 12.5 hz or 0.08s
 
                 case _:
+                    current_state = state.MAIN_MENU
                     print("Default case")
 
     except IOError as e:
