@@ -63,6 +63,8 @@ def button_press_callback(channel):
                     current_menu = option(current_menu.value + 1)
                     if current_menu == option.CREDITS:
                         current_menu = option.MAIN_MENU
+                #TODO: Put here a otpion for being in the main menu, where each button press increments a selector that
+                #has a maximum value of the number of menu options
    
             else:
                 #print("Long press detected!")
@@ -71,25 +73,16 @@ def button_press_callback(channel):
                 if current_menu is option.MEASURING_MODE:
                     print("Back to main menu after measuring!")
                     current_menu = option.MAIN_MENU
+                    
+                    # Display results
+                    calculate_perimiter()
 
                     # Reset Measuring Variables
                     reset_measurement_variables()
 
-                    global rotations
-                    for rotation in rotations:
-                        print(rotation)
-
-                    global distances
-                    for distance in distances:
-                        print(distance)
-
-                    # Reset Measurements
-                    distances = []
-                    rotations = [0]    
-
-
                 elif current_menu is not option.MAIN_MENU:
                     current_menu = option.MAIN_MENU
+                #TODO: Put here a option that in case in the main menu, it changes the current menu value to the selector value
 
             button_pressed = False  # Reset the press state
             return
@@ -99,6 +92,46 @@ def reset_measurement_variables():
     acc_y = vel_y = dist_y = dps_y = deg_y = 0
     sampling_interval = 0.1
     measure_mode = measure.DISTANCE
+
+def calculate_perimiter():
+    global rotations
+    for rotation in rotations:
+        print(rotation)
+
+    global distances
+    for distance in distances:
+        print(distance)
+
+    # Convert to Cartesian Coordinates
+    if len(rotations) == len (distances):
+        global x_coords
+        global y_coords
+        global resulting_vector
+        
+        # Iterate over the polar coordinates
+        for r, angle_deg in zip(distances, rotations):
+            angle_rad = math.radians(angle_deg)  # Convert angle to radians
+            x = r * math.cos(angle_rad)          # Calculate x coordinate
+            y = r * math.sin(angle_rad)          # Calculate y coordinate
+            x_coords.append(x)
+            y_coords.append(y)        
+            resulting_vector = [sum(x_coords), sum(y_coords)]
+        
+        if resulting_vector[0] != 0 or resulting_vector[1] != 0:
+            print("Perimeter not closed!")  
+        
+        print (f"Total distance measured: {sum(distances)}")
+            
+    else:
+        print ("Last distance missing!")
+
+    # Reset Measurements
+    distances = []
+    rotations = [0]   
+    x_coords = []
+    y_coords = []
+    resulting_vector = []
+
 
 # Machine States Definition
 class option(Enum):
@@ -137,6 +170,10 @@ sampling_interval = 0.1  # Because IMU Output rate at 12.5 hz or 0.08s
 distances = []
 rotations = [0]
 
+# Lists to store Cartesian coordinates
+x_coords = []
+y_coords = []
+resulting_vector = []
 #!############################## --- EXECUTIVE CYCLE --- ###############################
 
 if __name__ == "__main__":
