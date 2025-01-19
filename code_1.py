@@ -1,3 +1,4 @@
+
 #TODO: Organize thse sections of the code
 import os
 
@@ -31,68 +32,101 @@ GPIO.setmode(GPIO.BOARD)
 # Set GPIO pins to I/O and activate internal pull-up resistances
 GPIO.setup(pushButton, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
-# def button_pressed_callback(channel):
-    # global current_state
-    # current_state = state(current_state.value + 1)
-    # print("Button pressed!")
-    # if current_state == state.CREDITS:
-    #     current_state = state.MAIN_MENU
-
 # Callback function for button press/release
 def button_press_callback(channel):
-    global button_press_start_time, last_button_press_time, button_pressed
+    global button_press_start_time, button_pressed, current_menu
 
     if GPIO.input(channel) == GPIO.HIGH:  # Button pressed (rising edge)
         if not button_pressed:  # Ensure we don't detect the same press multiple times
             button_pressed = True
             button_press_start_time = time.time()  # Record the start time of the press
-            print("Button pressed!")
+            #print("Button pressed!")
             return
     
     if GPIO.input(channel) == GPIO.LOW:  # Button released (falling edge)
         if button_pressed:  # Only handle release if the button was previously pressed
             press_duration = time.time() - button_press_start_time  # Calculate how long the button was pressed
+           
             if press_duration < SHORT_PRESS_THRESHOLD:
-                print("Short press detected!")
-                # Handle short press (e.g., start measurement)
-                global current_state
-                current_state = state(current_state.value + 1)
-                if current_state == state.CREDITS:
-                    current_state = state.MAIN_MENU
+                #print("Short press detected!")
+                # Handle short press
+
+                if current_menu is option.MEASURING_MODE: 
+                    global measurement
+                    if measurement is measure.STOP or measurement is measure.IDLE:
+                        print("Measurement started!")
+                        measurement = measure.START
+                    elif measurement is measure.START:
+                        print("Measurement stoped!")
+                        measurement = measure.STOP
+                else:
+                    current_menu = option(current_menu.value + 1)
+                    if current_menu == option.CREDITS:
+                        current_menu = option.MAIN_MENU
+   
             else:
-                print("Long press detected!")
-                # Handle long press (e.g., show settings menu)
+                #print("Long press detected!")
+                # Handle long press
+
+                if current_menu is option.MEASURING_MODE:
+                    print("Back to main menu after measuring!")
+                    current_menu = option.MAIN_MENU
+
+                    # Reset Measuring Variables
+                    global measure_mode
+                    global acc_y
+                    global vel_y
+                    global dist_y
+                    global dps_y
+                    global degrees_y
+                    global sampling_interval
+
+                    measure_mode = measure.DISTANCE
+                    acc_y = 0
+                    vel_y = 0
+                    dist_y = 0
+                    dps_y = 0
+                    degrees_y = 0
+                    sampling_interval = 0.1
+
+                elif current_menu is not option.MAIN_MENU:
+                    current_menu = option.MAIN_MENU
 
             button_pressed = False  # Reset the press state
             return     
 
-def calculate_perimeter(accelerations, sampling_interval):
-    start_time = time.time()  # Start the timer
-    total_distance = 0
-    for acc in accelerations:
-        # Assume `acc` is a tuple with (ax, ay, az)
-        vector_magnitude = math.sqrt(sum(a ** 2 for a in acc))  # Vector magnitude
-        total_distance += vector_magnitude * sampling_interval  # Simple integration
-        time.sleep(sampling_interval)  # Simulate real-time sampling
-    elapsed_time = time.time() - start_time  # End the timer
-    return total_distance, elapsed_time
-
-# States Definition
-class state(Enum):
+# Machine States Definition
+class option(Enum):
     MAIN_MENU = 1
     MEASURING_MODE = 2
-    SETTINGS_MENU = 3
-    CREDITS = 4
+    DIAG_MODE = 3
+    SETTINGS_MENU = 4
+    CREDITS = 5
+
+# Measument Modes Definition
+class measure(Enum):
+    ANGLE = 1
+    DISTANCE = 2
+    START = 3
+    STOP = 4
+    IDLE = 5
 
 # Short and Long Press Thresholds Definition
 SHORT_PRESS_THRESHOLD = 1.0  # seconds (short press duration)
 
 # Global Variables Definition
-current_state = state.MAIN_MENU
-button_press_start_time = None    # Variable to track press time
-last_button_press_time = 0  # Track the time of the last valid press
+current_menu = option.MAIN_MENU # State variable for mode selection
+button_press_start_time = None # Variable to track press time
 button_pressed = False # Flag to prevent multiple detections
 
+measurement = measure.IDLE # Flag to dectect begining of measurement
+measure_mode = measure.DISTANCE # Alternating variable to change types of measurement
+acc_y = 0
+vel_y = 0
+dist_y = 0
+dps_y = 0
+degrees_y = 0
+sampling_interval = 0.1  # Because IMU Output rate at 12.5 hz or 0.08s
 
 #!############################## --- EXECUTIVE CYCLE --- ###############################
 
@@ -101,7 +135,7 @@ if __name__ == "__main__":
     print("Initializing LSM6DS3...")
     lsm6ds3 = LSM6DS3(bus)
 
-    #TODO: Create inital menu to select resulution and sampling time
+
     acc_scaling_factor = 0.000061 # Sensitivity/Resolution for +-2g scale
     dps_scaling_factor = 0.0035  # Sensitivity/Resolution for +-1000dps scale
 
@@ -109,14 +143,43 @@ if __name__ == "__main__":
 
     try:
         while True:
-            match current_state:
-                case state.MAIN_MENU:
+            match current_menu:
+                case option.MAIN_MENU:
                     print("Press to start measurement...")
 
-                    while current_state == state.MAIN_MENU:
+                    while current_menu == option.MAIN_MENU:
                         time.sleep(0.1)
 
-                case state.MEASURING_MODE:
+                case option.MEASURING_MODE:
+                    print("Measuring Mode")
+
+                    if measurement is measure.START:
+                        if measure_mode is measure.DISTANCE:
+                            print("Measuring distance...")  
+                            print("\033[2A", end="")  # Move cursor up 2 lines
+                            acc_y = lsm6ds3.read_acceleration_y() * acc_scaling_factor
+                            vel_y += acc_y * sampling_interval
+                            dist_y += vel_y * sampling_interval  
+                            time.sleep(sampling_interval) 
+                        else:
+                            print("Measuring rotation...")
+                            print("\033[2A", end="")  # Move cursor up 2 lines
+                            dps_y = lsm6ds3.read_gyroscope_y() * acc_scaling_factor
+                            degrees_y += dps_y * sampling_interval
+                            time.sleep(sampling_interval)  
+                    elif measurement is measure.STOP:
+                        measurement = measure.IDLE
+                        if measure_mode is measure.DISTANCE:
+                            measure_mode = measure.ANGLE
+                        else:
+                            measure_mode = measure.DISTANCE
+                    else:
+                        while current_menu is option.MEASURING_MODE and measurement is measure.IDLE:
+                            time.sleep(0.1) #Because IMU Output rate at 12.5 hz or 0.08s
+
+                case option.DIAG_MODE:
+                    print("Diagnostic Mode")                    
+                    
                     acc_x = lsm6ds3.read_acceleration_x() * acc_scaling_factor
                     acc_y = lsm6ds3.read_acceleration_y() * acc_scaling_factor
                     acc_z = lsm6ds3.read_acceleration_z() * acc_scaling_factor
@@ -129,10 +192,21 @@ if __name__ == "__main__":
                     print(f"Ang Rate (dps): X={dps_x:.3f}, Y={dps_y:.3f}, Z={dps_z:.3f}")
                     print("\033[2A", end="")  # Move cursor up 2 lines
                     
-                    time.sleep(0.1) #Because IMU Output rate at 12.5 hz or 0.08s
+                    while current_menu == option.DIAG_MODE:
+                        time.sleep(0.1)
+
+                case option.SETTINGS_MENU:
+                    print("Settings")         
+
+                    #TODO: Create inital menu to select resulution and sampling time
+                    acc_scaling_factor = 0.000061 # Sensitivity/Resolution for +-2g scale
+                    dps_scaling_factor = 0.0035  # Sensitivity/Resolution for +-1000dps scale
+
+                    while current_menu == option.SETTINGS_MENU:
+                        time.sleep(0.1)
 
                 case _:
-                    current_state = state.MAIN_MENU
+                    current_menu = option.MAIN_MENU
                     print("Default case")
 
     except IOError as e:
