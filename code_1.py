@@ -73,27 +73,32 @@ def button_press_callback(channel):
                     current_menu = option.MAIN_MENU
 
                     # Reset Measuring Variables
-                    global measure_mode
-                    global acc_y
-                    global vel_y
-                    global dist_y
-                    global dps_y
-                    global degrees_y
-                    global sampling_interval
+                    reset_measurement_variables()
 
-                    measure_mode = measure.DISTANCE
-                    acc_y = 0
-                    vel_y = 0
-                    dist_y = 0
-                    dps_y = 0
-                    degrees_y = 0
-                    sampling_interval = 0.1
+                    global rotations
+                    for rotation in rotations:
+                        print(rotation)
+
+                    global distances
+                    for distance in distances:
+                        print(distance)
+
+                    # Reset Measurements
+                    distances = []
+                    rotations = [0]    
+
 
                 elif current_menu is not option.MAIN_MENU:
                     current_menu = option.MAIN_MENU
 
             button_pressed = False  # Reset the press state
-            return     
+            return
+        
+def reset_measurement_variables():
+    global acc_y, vel_y, dist_y, dps_y, deg_y, sampling_interval, measure_mode
+    acc_y = vel_y = dist_y = dps_y = deg_y = 0
+    sampling_interval = 0.1
+    measure_mode = measure.DISTANCE
 
 # Machine States Definition
 class option(Enum):
@@ -125,8 +130,12 @@ acc_y = 0
 vel_y = 0
 dist_y = 0
 dps_y = 0
-degrees_y = 0
+deg_y = 0
 sampling_interval = 0.1  # Because IMU Output rate at 12.5 hz or 0.08s
+
+# List of distances and rotation measured 
+distances = []
+rotations = [0]
 
 #!############################## --- EXECUTIVE CYCLE --- ###############################
 
@@ -134,7 +143,6 @@ if __name__ == "__main__":
     
     print("Initializing LSM6DS3...")
     lsm6ds3 = LSM6DS3(bus)
-
 
     acc_scaling_factor = 0.000061 # Sensitivity/Resolution for +-2g scale
     dps_scaling_factor = 0.0035  # Sensitivity/Resolution for +-1000dps scale
@@ -165,13 +173,15 @@ if __name__ == "__main__":
                             print("Measuring rotation...")
                             print("\033[2A", end="")  # Move cursor up 2 lines
                             dps_y = lsm6ds3.read_gyroscope_y() * acc_scaling_factor
-                            degrees_y += dps_y * sampling_interval
+                            deg_y += dps_y * sampling_interval
                             time.sleep(sampling_interval)  
                     elif measurement is measure.STOP:
                         measurement = measure.IDLE
                         if measure_mode is measure.DISTANCE:
+                            distances.append(dist_y)
                             measure_mode = measure.ANGLE
-                        else:
+                        elif measure_mode is measure.ANGLE:
+                            rotations.append(deg_y)
                             measure_mode = measure.DISTANCE
                     else:
                         while current_menu is option.MEASURING_MODE and measurement is measure.IDLE:
