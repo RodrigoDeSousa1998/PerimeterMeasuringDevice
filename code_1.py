@@ -1,5 +1,8 @@
 
 #TODO: Organize thse sections of the code
+#TODO: Create script to initialize after turning RPi on and to turn the RPi off after pressing for more than 4 seconds
+#TODO: Implement buzer to play for the time the button is being pushed
+#TODO: Create menus for the OLED SS1306
 import os
 
 # Set the revision to the new-style revision code for the board (800013 for revision 000F) to work with rpi-lgpio module
@@ -13,6 +16,7 @@ import smbus2
 import RPi.GPIO as GPIO
 
 from LSM6DS3 import LSM6DS3
+#from SSD1306 import SSD1306
 
 # Define I2C bus
 bus = smbus2.SMBus(1)
@@ -37,7 +41,7 @@ def button_press_callback(channel):
     global button_press_start_time, button_pressed, current_menu
 
     if GPIO.input(channel) == GPIO.HIGH:  # Button pressed (rising edge)
-        if not button_pressed:  # Ensure we don't detect the same press multiple times
+        if not button_pressed:  # Ensure not to detect the same press multiple times
             button_pressed = True
             button_press_start_time = time.time()  # Record the start time of the press
             #print("Button pressed!")
@@ -118,7 +122,8 @@ def calculate_perimiter():
             resulting_vector = [sum(x_coords), sum(y_coords)]
         
         if resulting_vector[0] != 0 or resulting_vector[1] != 0:
-            print("Perimeter not closed!")  
+            print("Perimeter not closed!")
+            #TODO: Put number of sides here  
         
         print (f"Total distance measured: {sum(distances)}")
             
@@ -177,6 +182,9 @@ resulting_vector = []
 #!############################## --- EXECUTIVE CYCLE --- ###############################
 
 if __name__ == "__main__":
+    
+    #print("Initializing SSD1306...")
+    #oled = SSD1306()
     
     print("Initializing LSM6DS3...")
     lsm6ds3 = LSM6DS3(bus)
