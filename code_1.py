@@ -3,7 +3,8 @@
 #TODO: Implement buzer to play for the time the button is being pushed
 #TODO: Create menus for the OLED SS1306
 
-# Python Standard Libraries 
+# Python Standard Libraries
+import os 
 import time
 import math
 from enum import Enum
@@ -19,6 +20,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 # GPIO Configuration
 SHORT_PRESS_THRESHOLD = 1.0  # seconds - short press duration
+SHUTDOWN_THRESHOLD = 4.0 # seconds
 PUSH_BUTTON_PIN = 17 # BCM GPIO 17 = Pin 11 in P1 Header
 BUZZER_PIN = 18 # BCM GPIO 17 = Pin 12 in P1 Header
 GPIO.setmode(GPIO.BCM) # Set pin-numbering scheme to BCM Pinout 
@@ -88,7 +90,9 @@ def button_press_callback(channel):
     if GPIO.input(channel) == GPIO.LOW:  # Button released (falling edge)
             GPIO.output(BUZZER_PIN, GPIO.LOW)  # Deactivate buzzer
             press_duration = time.time() - button_press_start_time  # Calculate how long the button was pressed
-           
+
+            if press_duration > SHUTDOWN_THRESHOLD:  # Shutdown condition
+                shutdown_rpi()
             if press_duration < SHORT_PRESS_THRESHOLD:
                 #print("Short press detected!")
                 handle_short_press()
@@ -142,6 +146,11 @@ def handle_long_press():
     elif current_menu != option.MAIN_MENU:
         current_menu = option.MAIN_MENU
 
+def shutdown_rpi():
+    print("Shutting down the Raspberry Pi...")
+    oled.clear()
+    oled.display()
+    os.system("sudo shutdown now")
 
 def reset_measurement_variables():
     
@@ -342,7 +351,7 @@ if __name__ == "__main__":
     acc_scaling_factor = 0.000061 # Sensitivity/Resolution for +-2g scale
     dps_scaling_factor = 0.0035  # Sensitivity/Resolution for +-1000dps scale
 
-    GPIO.add_event_detect(PUSH_BUTTON_PIN, GPIO.BOTH, callback=button_press_callback, bouncetime=300)
+    GPIO.add_event_detect(PUSH_BUTTON_PIN, GPIO.BOTH, callback=button_press_callback, bouncetime=150)
 
     try:
         while True:
