@@ -16,7 +16,7 @@ import smbus2
 import RPi.GPIO as GPIO
 
 from LSM6DS3 import LSM6DS3
-#from SSD1306 import SSD1306
+from SSD1306 import SSD1306
 
 # Define I2C bus
 bus = smbus2.SMBus(1)
@@ -177,8 +177,8 @@ resulting_vector = []
 
 if __name__ == "__main__":
     
-    #print("Initializing SSD1306...")
-    #oled = SSD1306()
+    print("Initializing SSD1306...")
+    oled = SSD1306()
     
     print("Initializing LSM6DS3...")
     lsm6ds3 = LSM6DS3(bus)
