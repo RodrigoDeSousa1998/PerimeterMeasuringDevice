@@ -116,8 +116,8 @@ def handle_short_press():
             current_menu = option.MAIN_MENU
             measurement = measure.IDLE
     else:
-        current_menu = option(current_menu.value + 1)
-        if current_menu == option.SETTINGS_MENU:
+        # current_menu = option(current_menu.value + 1)
+        # if current_menu == option.SETTINGS_MENU:
             current_menu = option.MAIN_MENU
 
 def handle_long_press():
@@ -304,6 +304,33 @@ def draw_diag_mode():
     oled.image(image)
     oled.display()
 
+def draw_settings_menu():
+    global oled, acc_scaling_factor, dps_scaling_factor
+
+    # Clear the OLED display
+    oled.clear()
+
+    # Create a new image with 1-bit color depth (black and white)
+    image = Image.new('1', (oled.width, oled.height))
+    draw = ImageDraw.Draw(image)
+
+    # Load a font (adjust path as needed)
+    font = ImageFont.load_default()
+
+    # Draw "Settings Menu" centered at the top
+    title_text = "Settings Menu"
+    text_width, _ = draw.textsize(title_text, font=font)
+    draw.text(((oled.width - text_width) // 2, 0), title_text, font=font, fill=255)
+
+    # Display current settings
+    draw.text((0, 16), "Resolution:", font=font, fill=255)
+    draw.text((0, 32), f"Acc: {acc_scaling_factor} g/LSB", font=font, fill=255)
+    draw.text((0, 48), f"Gyro: {dps_scaling_factor} °/s/LSB", font=font, fill=255)
+
+    # Display the updated image on the OLED
+    oled.image(image)
+    oled.display()
+
 #!############################## --- EXECUTIVE CYCLE --- ###############################
 
 if __name__ == "__main__":
@@ -386,15 +413,17 @@ if __name__ == "__main__":
                 time.sleep(0.1)
 
             elif current_menu == option.SETTINGS_MENU:
-                print("Settings")         
+                # print("Settings")         
 
-                #TODO: Create initial menu to select resulution units
-                print(f"Accelerometer resolution {acc_scaling_factor}m")
-                print(f"Gyroscope resolution: {dps_scaling_factor}°")
-                print("Scale: +-2g")
+                # #TODO: Create initial menu to select resulution units
+                # print(f"Accelerometer resolution {acc_scaling_factor}m")
+                # print(f"Gyroscope resolution: {dps_scaling_factor}°")
+                # print("Scale: +-2g")
 
-                while current_menu == option.SETTINGS_MENU:
-                    time.sleep(0.1)
+                # while current_menu == option.SETTINGS_MENU:
+                #     time.sleep(0.1)
+                draw_settings_menu()
+                time.sleep(0.5)
 
             else:
                 current_menu = option.MAIN_MENU
