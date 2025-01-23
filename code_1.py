@@ -252,13 +252,6 @@ def draw_measuring_mode():
             value_text = f"{deg_y:.2f}°"
             extra_value_text = "Measuring..."
 
-    # # Draw the second line with the mode text
-    # draw.text((0, 32), mode_text, font=font, fill=255)
-
-    # # Draw the value text aligned to the right
-    # value_width, _ = draw.textsize(value_text, font=font)
-    # draw.text((oled.width - value_width - 2, 32), value_text, font=font, fill=255)
-
     # Draw the mode text (Distance, Rotation, or Results)
     draw.text((0, 16), mode_text, font=font, fill=255)
 
@@ -267,6 +260,45 @@ def draw_measuring_mode():
 
     # Draw the extra value text on the third line
     draw.text((0, 48), extra_value_text, font=font, fill=255)
+
+    # Display the updated image on the OLED
+    oled.image(image)
+    oled.display()
+
+def draw_diag_mode():
+    
+    global oled
+
+    # Clear the OLED display
+    oled.clear()
+
+    # Create a new image with 1-bit color depth (black and white)
+    image = Image.new('1', (oled.width, oled.height))
+    draw = ImageDraw.Draw(image)
+
+    # Load a font (adjust path as needed)
+    font = ImageFont.load_default()
+
+    # Draw "Diagnostic Mode" centered at the top
+    title_text = "Diagnostic Mode"
+    text_width, _ = draw.textsize(title_text, font=font)
+    draw.text(((oled.width - text_width) // 2, 0), title_text, font=font, fill=255)
+
+    # Display diagnostic values
+    acc_x = lsm6ds3.read_acceleration_x() * acc_scaling_factor
+    acc_y = lsm6ds3.read_acceleration_y() * acc_scaling_factor
+    acc_z = lsm6ds3.read_acceleration_z() * acc_scaling_factor
+
+    dps_x = lsm6ds3.read_gyroscope_x() * dps_scaling_factor
+    dps_y = lsm6ds3.read_gyroscope_y() * dps_scaling_factor
+    dps_z = lsm6ds3.read_gyroscope_z() * dps_scaling_factor
+
+    draw.text((0, 16), f"Ax:{acc_x:.2f}g", font=font, fill=255)
+    draw.text((0, 32), f"Ay:{acc_y:.2f}g", font=font, fill=255)
+    draw.text((0, 48), f"Az:{acc_z:.2f}g", font=font, fill=255)
+    draw.text((64, 16), f"Ox:{dps_x:.2f}°/s", font=font, fill=255)
+    draw.text((64, 32), f"Oy:{dps_y:.2f}°/s", font=font, fill=255)
+    draw.text((64, 48), f"Oz:{dps_z:.2f}°/s", font=font, fill=255)
 
     # Display the updated image on the OLED
     oled.image(image)
@@ -333,22 +365,25 @@ if __name__ == "__main__":
                         time.sleep(0.1)
 
             elif current_menu == option.DIAG_MODE:
-                print("Diagnostic Mode")                    
+                # print("Diagnostic Mode")                    
                     
-                acc_x = lsm6ds3.read_acceleration_x() * acc_scaling_factor
-                acc_y = lsm6ds3.read_acceleration_y() * acc_scaling_factor
-                acc_z = lsm6ds3.read_acceleration_z() * acc_scaling_factor
+                # acc_x = lsm6ds3.read_acceleration_x() * acc_scaling_factor
+                # acc_y = lsm6ds3.read_acceleration_y() * acc_scaling_factor
+                # acc_z = lsm6ds3.read_acceleration_z() * acc_scaling_factor
 
-                dps_x = lsm6ds3.read_gyroscope_x() * acc_scaling_factor
-                dps_y = lsm6ds3.read_gyroscope_y() * acc_scaling_factor
-                dps_z = lsm6ds3.read_gyroscope_z() * acc_scaling_factor
+                # dps_x = lsm6ds3.read_gyroscope_x() * acc_scaling_factor
+                # dps_y = lsm6ds3.read_gyroscope_y() * acc_scaling_factor
+                # dps_z = lsm6ds3.read_gyroscope_z() * acc_scaling_factor
 
-                print(f"Accel (g): X={acc_x:.3f}, Y={acc_y:.3f}, Z={acc_z:.3f}")
-                print(f"Ang Rate (dps): X={dps_x:.3f}, Y={dps_y:.3f}, Z={dps_z:.3f}")
-                print("\033[2A", end="")  # Move cursor up 2 lines
+                # print(f"Accel (g): X={acc_x:.3f}, Y={acc_y:.3f}, Z={acc_z:.3f}")
+                # print(f"Ang Rate (dps): X={dps_x:.3f}, Y={dps_y:.3f}, Z={dps_z:.3f}")
+                # print("\033[2A", end="")  # Move cursor up 2 lines
                     
-                while current_menu == option.DIAG_MODE:
-                    time.sleep(0.1)
+                # while current_menu == option.DIAG_MODE:
+                #     time.sleep(0.1)
+
+                draw_diag_mode()
+                time.sleep(0.1)
 
             elif current_menu == option.SETTINGS_MENU:
                 print("Settings")         
