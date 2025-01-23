@@ -20,8 +20,10 @@ from PIL import Image, ImageDraw, ImageFont
 # GPIO Configuration
 SHORT_PRESS_THRESHOLD = 1.0  # seconds - short press duration
 PUSH_BUTTON_PIN = 17 # BCM GPIO 17 = Pin 11 in P1 Header
+BUZZER_PIN = 18 # BCM GPIO 17 = Pin 12 in P1 Header
 GPIO.setmode(GPIO.BCM) # Set pin-numbering scheme to BCM Pinout 
 GPIO.setup(PUSH_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # Set GPIO pins to I/O and activate internal pull-up resistances
+GPIO.setup(BUZZER_PIN, GPIO.OUT)
 
 # I2C Bus Definition
 bus = smbus2.SMBus(1)
@@ -80,9 +82,11 @@ def button_press_callback(channel):
 
     if GPIO.input(channel) == GPIO.HIGH:  # Button pressed (rising edge)
             #print("Button pressed!")
+            GPIO.output(BUZZER_PIN, GPIO.HIGH)  # Activate buzzer
             button_press_start_time = time.time()  # Record the start time of the press
 
     if GPIO.input(channel) == GPIO.LOW:  # Button released (falling edge)
+            GPIO.output(BUZZER_PIN, GPIO.LOW)  # Deactivate buzzer
             press_duration = time.time() - button_press_start_time  # Calculate how long the button was pressed
            
             if press_duration < SHORT_PRESS_THRESHOLD:
@@ -338,7 +342,7 @@ if __name__ == "__main__":
     acc_scaling_factor = 0.000061 # Sensitivity/Resolution for +-2g scale
     dps_scaling_factor = 0.0035  # Sensitivity/Resolution for +-1000dps scale
 
-    GPIO.add_event_detect(PUSH_BUTTON_PIN, GPIO.BOTH, callback=button_press_callback, bouncetime=150)
+    GPIO.add_event_detect(PUSH_BUTTON_PIN, GPIO.BOTH, callback=button_press_callback, bouncetime=300)
 
     try:
         while True:
