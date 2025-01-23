@@ -21,17 +21,11 @@ from LSM6DS3 import LSM6DS3
 # Define I2C bus
 bus = smbus2.SMBus(1)
 
-# # Pin definitions
-# pinSDA = 3 # P1 header pin 3
-# pinSCL = 5 # P1 header pin 5
+# Pin definitions
 pushButton = 11 # P1 header pin 11
 
 # Set pin-numbering scheme to P1 Board Header 
 GPIO.setmode(GPIO.BOARD)
-
-# # Set GPIO pins to I2C and activate internal pull-up resistances
-# GPIO.setup(pinSDA , GPIO.I2C, pull_up_down=GPIO.PUD_UP)
-# GPIO.setup(pinSCL , GPIO.I2C, pull_up_down=GPIO.PUD_UP)
 
 # Set GPIO pins to I/O and activate internal pull-up resistances
 GPIO.setup(pushButton, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
@@ -106,7 +100,7 @@ def calculate_perimiter():
     for distance in distances:
         print(distance)
 
-    # Convert to Cartesian Coordinates
+    # Convert to cartesian coordinates
     if len(rotations) == len (distances):
         global x_coords
         global y_coords
@@ -121,7 +115,7 @@ def calculate_perimiter():
             y_coords.append(y)        
             resulting_vector = [sum(x_coords), sum(y_coords)]
         
-        if resulting_vector[0] != 0 or resulting_vector[1] != 0:
+        if resulting_vector[0] != 0 or resulting_vector[1] != 0: #TODO: Here should be a threshold to account for error
             print("Perimeter not closed!")
             #TODO: Put number of sides here  
         
@@ -175,7 +169,7 @@ sampling_interval = 0.1  # Because IMU Output rate at 12.5 hz or 0.08s
 distances = []
 rotations = [0]
 
-# Lists to store Cartesian coordinates
+# Lists to store cartesian coordinates
 x_coords = []
 y_coords = []
 resulting_vector = []
@@ -221,16 +215,16 @@ if __name__ == "__main__":
                             deg_y += dps_y * sampling_interval
                             time.sleep(sampling_interval)  
                     elif measurement is measure.STOP:
-                        measurement = measure.IDLE
+                        measurement = measure.IDLE #In between measurements
                         if measure_mode is measure.DISTANCE:
-                            distances.append(dist_y)
+                            distances.append(dist_y) # Saving last measured distance
                             measure_mode = measure.ANGLE
                         elif measure_mode is measure.ANGLE:
-                            rotations.append(deg_y)
+                            rotations.append(deg_y) # Saving last measured roatation
                             measure_mode = measure.DISTANCE
                     else:
                         while current_menu is option.MEASURING_MODE and measurement is measure.IDLE:
-                            time.sleep(0.1) #Because IMU Output rate at 12.5 hz or 0.08s
+                            time.sleep(0.1)
 
                 case option.DIAG_MODE:
                     print("Diagnostic Mode")                    
