@@ -1,8 +1,3 @@
-
-#TODO: Create script to initialize after turning RPi on and to turn the RPi off after pressing for more than 4 seconds
-#TODO: Implement buzer to play for the time the button is being pushed
-#TODO: Create menus for the OLED SS1306
-
 # Python Standard Libraries
 import os 
 import time
@@ -18,13 +13,15 @@ from LSM6DS3 import LSM6DS3
 import Adafruit_SSD1306
 from PIL import Image, ImageDraw, ImageFont
 
+# Constants Definition
+SHORT_PRESS_THRESHOLD = 1.0 # seconds - short press duration
+SHUTDOWN_THRESHOLD    = 4.0 # seconds - press time to shutdown
+PUSH_BUTTON_PIN       = 17  # BCM GPIO 17 = Pin 11 in P1 Header
+BUZZER_PIN            = 18  # BCM GPIO 17 = Pin 12 in P1 Header
+
 # GPIO Configuration
-SHORT_PRESS_THRESHOLD = 1.0  # seconds - short press duration
-SHUTDOWN_THRESHOLD = 4.0 # seconds
-PUSH_BUTTON_PIN = 17 # BCM GPIO 17 = Pin 11 in P1 Header
-BUZZER_PIN = 18 # BCM GPIO 17 = Pin 12 in P1 Header
 GPIO.setmode(GPIO.BCM) # Set pin-numbering scheme to BCM Pinout 
-GPIO.setup(PUSH_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # Set GPIO pins to I/O and activate internal pull-up resistances
+GPIO.setup(PUSH_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # Set GPIO pin to I/O and activate internal pull-up resistances
 GPIO.setup(BUZZER_PIN, GPIO.OUT)
 
 # I2C Bus Definition
@@ -58,11 +55,11 @@ class measure(Enum):
     END      = 6
 
 # Global Variables Definition
-current_menu            = option.MAIN_MENU # State variable for mode selection
-menu_selector           = option.MEASURING_MODE
-button_press_start_time = 0                # Variable to track press time
-measurement             = measure.IDLE     # Flag to dectect begining of measurement
-measure_mode            = measure.DISTANCE # Alternating variable to change types of measurement
+current_menu            = option.MAIN_MENU      # State variable for mode selection
+menu_selector           = option.MEASURING_MODE # Selector variable for mode selection
+button_press_start_time = 0                     # Variable to track press time
+measurement             = measure.IDLE          # Flag to dectect beginning of measurement
+measure_mode            = measure.DISTANCE      # Alternating variable to change types of measurement
 
 acc_y             = 0    # Variable to store accelaration on the Y axis
 vel_y             = 0    # Variable to store velocity on the Y axis
@@ -72,10 +69,10 @@ deg_y             = 0    # Variable to store rotation on the Y axis
 sampling_interval = 0.1  # Sampling interval because IMU Output rate at 12.5 hz or 0.08s
 
 distances = []  # List of distances measured 
-rotations = [0] # List of rotations measured
+rotations = [0] # List of rotations measured (initializar with the first index content as 0)
 
-x_coords = []         # List to store X coordinates
-y_coords = []         # List to store Y coordinates
+x_coords = []             # List to store X coordinates
+y_coords = []             # List to store Y coordinates
 resulting_vector = [0, 0] # List to store X,Y coordinates of resulting vector
 
 # Callback function for button press/release
@@ -104,45 +101,48 @@ def handle_short_press():
     
     global current_menu, menu_selector, measurement
     
+    # Mechanic to enable selector
     if current_menu == option.MAIN_MENU:
         if menu_selector == option.MAIN_MENU or menu_selector == option.SETTINGS_MENU:
             menu_selector = option.MEASURING_MODE
         else:
             menu_selector = option(menu_selector.value + 1)
 
+    # Mechanic to enable measuring procedure
     elif current_menu == option.MEASURING_MODE: 
         if measurement == measure.STOP or measurement == measure.IDLE:
-            print("Measurement started!")
+            #print("Measurement started!")
             measurement = measure.START
         elif measurement == measure.START:
-            print("Measurement stoped!")
+            #print("Measurement stoped!")
             measurement = measure.STOP
         elif measurement == measure.END:
-            print("Back to main menu after measuring!")
+            #print("Back to main menu after measuring!")
             # Reset Measuring Variables
             reset_measurement_variables()
             current_menu = option.MAIN_MENU
             measurement = measure.IDLE
+    
+    # Mechanic to return to main menu after going to non-interactive submenus
     else:
-        # current_menu = option(current_menu.value + 1)
-        # if current_menu == option.SETTINGS_MENU:
             current_menu = option.MAIN_MENU
 
 def handle_long_press():
     
     global current_menu, menu_selector, measurement
     
+    # Mechanic to go into the current selected menu
     if current_menu == option.MAIN_MENU:
         current_menu = menu_selector
         menu_selector = option.MEASURING_MODE
 
+    # Mechanic to enable measuring procedure
     elif current_menu == option.MEASURING_MODE:
-
         measurement = measure.END
-                    
         # Display results
         calculate_perimiter()
-
+    
+    # Mechanic to return to main menu after going to non-interactive submenus
     elif current_menu != option.MAIN_MENU:
         current_menu = option.MAIN_MENU
 
@@ -183,14 +183,12 @@ def draw_main_menu():
     
     global menu_selector, oled
 
-    # Clear the OLED display
     oled.clear()
 
     # Create a new image with 1-bit color depth (black and white)
     image = Image.new('1', (oled.width, oled.height))
     draw = ImageDraw.Draw(image)
 
-    # Load a font (adjust path as needed)
     font = ImageFont.load_default()
 
     # Draw "Main Menu" centered at the top
@@ -198,7 +196,6 @@ def draw_main_menu():
     text_width, _ = draw.textsize(menu_text, font=font)
     draw.text(((oled.width - text_width) // 2, 0), menu_text, font=font, fill=255)
 
-    # Define menu items
     menu_items = [
         "1. Measuring Mode",
         "2. Diagnostic Mode",
@@ -209,15 +206,12 @@ def draw_main_menu():
     for i, item in enumerate(menu_items):
         y_position = 16 + (i * 16)  # Position for each menu item (16 pixels apart)
 
-        # Draw menu item text
         draw.text((20, y_position), item, font=font, fill=255)
 
         # Draw selector dot if this item is selected
         if menu_selector.value == i + 2:  # Align with option Enum values
             draw.ellipse((2, y_position + 4, 6, y_position + 8), outline=255, fill=255)  # Left position for ball
 
-
-    # Display the updated image on the OLED
     oled.image(image)
     oled.display()
 
@@ -225,14 +219,11 @@ def draw_measuring_mode():
     
     global measurement, measure_mode, dist_y, deg_y, rotations, distances, resulting_vector, oled
 
-    # Clear the OLED display
     oled.clear()
 
-    # Create a new image with 1-bit color depth (black and white)
     image = Image.new('1', (oled.width, oled.height))
     draw = ImageDraw.Draw(image)
 
-    # Load a font (adjust path as needed)
     font = ImageFont.load_default()
 
     # Draw "Measuring Mode" centered at the top
@@ -274,7 +265,6 @@ def draw_measuring_mode():
     # Draw the extra value text on the third line
     draw.text((0, 48), extra_value_text, font=font, fill=255)
 
-    # Display the updated image on the OLED
     oled.image(image)
     oled.display()
 
@@ -282,17 +272,13 @@ def draw_diag_mode():
     
     global oled
 
-    # Clear the OLED display
     oled.clear()
 
-    # Create a new image with 1-bit color depth (black and white)
     image = Image.new('1', (oled.width, oled.height))
     draw = ImageDraw.Draw(image)
 
-    # Load a font (adjust path as needed)
     font = ImageFont.load_default()
 
-    # Draw "Diagnostic Mode" centered at the top
     title_text = "Diagnostic Mode"
     text_width, _ = draw.textsize(title_text, font=font)
     draw.text(((oled.width - text_width) // 2, 0), title_text, font=font, fill=255)
@@ -313,24 +299,19 @@ def draw_diag_mode():
     draw.text((64, 32), f"Oy:{dps_y:.2f}°/s", font=font, fill=255)
     draw.text((64, 48), f"Oz:{dps_z:.2f}°/s", font=font, fill=255)
 
-    # Display the updated image on the OLED
     oled.image(image)
     oled.display()
 
 def draw_settings_menu():
     global oled, acc_scaling_factor, dps_scaling_factor
 
-    # Clear the OLED display
     oled.clear()
 
-    # Create a new image with 1-bit color depth (black and white)
     image = Image.new('1', (oled.width, oled.height))
     draw = ImageDraw.Draw(image)
 
-    # Load a font (adjust path as needed)
     font = ImageFont.load_default()
 
-    # Draw "Settings Menu" centered at the top
     title_text = "Settings Menu"
     text_width, _ = draw.textsize(title_text, font=font)
     draw.text(((oled.width - text_width) // 2, 0), title_text, font=font, fill=255)
@@ -340,16 +321,15 @@ def draw_settings_menu():
     draw.text((0, 32), f"Acc: {acc_scaling_factor} g/LSB", font=font, fill=255)
     draw.text((0, 48), f"Gyro: {dps_scaling_factor} °/s/LSB", font=font, fill=255)
 
-    # Display the updated image on the OLED
     oled.image(image)
     oled.display()
 
-#!############################## --- EXECUTIVE CYCLE --- ###############################
+#!##################################### --- EXECUTIVE CYCLE --- ######################################!#
 
 if __name__ == "__main__":
     
     acc_scaling_factor = 0.000061 # Sensitivity/Resolution for +-2g scale
-    dps_scaling_factor = 0.0035  # Sensitivity/Resolution for +-1000dps scale
+    dps_scaling_factor = 0.0035   # Sensitivity/Resolution for +-1000dps scale
 
     GPIO.add_event_detect(PUSH_BUTTON_PIN, GPIO.BOTH, callback=button_press_callback, bouncetime=150)
 
@@ -358,9 +338,9 @@ if __name__ == "__main__":
             if current_menu == option.MAIN_MENU:
                 
                 #print("Press to start measurement...")
-                print(f"current_menu:{current_menu}")
-                print(f"menu_selector:{menu_selector}")
-                print("\033[2A", end="")  # Move cursor up 2 lines
+                # print(f"current_menu:{current_menu}")
+                # print(f"menu_selector:{menu_selector}")
+                # print("\033[2A", end="")  # Move cursor up 2 lines
 
                 draw_main_menu()
                 time.sleep(0.1)
@@ -389,7 +369,7 @@ if __name__ == "__main__":
                     draw_measuring_mode()
 
                 elif measurement == measure.STOP:
-                    measurement = measure.IDLE #In between measurements
+                    measurement = measure.IDLE # In between measurements
                     if measure_mode == measure.DISTANCE:
                         distances.append(dist_y) # Saving last measured distance
                         measure_mode = measure.ANGLE
@@ -428,7 +408,6 @@ if __name__ == "__main__":
             elif current_menu == option.SETTINGS_MENU:
                 # print("Settings")         
 
-                # #TODO: Create initial menu to select resulution units
                 # print(f"Accelerometer resolution {acc_scaling_factor}m")
                 # print(f"Gyroscope resolution: {dps_scaling_factor}°")
                 # print("Scale: +-2g")
